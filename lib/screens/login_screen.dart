@@ -1,23 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import '../services/auth_service.dart';
 import '../home.dart';
 import 'verify_email_screen.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final AuthService? authService;
+
+  const LoginScreen({super.key, this.authService});
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final AuthService _authService = AuthService();
+  late AuthService _authService;
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoginMode = true;
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _isOnline = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _authService = widget.authService ?? AuthService();
+    _checkInitialConnectivity();
+    _setupConnectivityListener();
+  }
+
+  Future<void> _checkInitialConnectivity() async {
+    final isOnline = await _authService.hasInternetConnection();
+    if (mounted) {
+      setState(() {
+        _isOnline = isOnline;
+      });
+    }
+  }
+
+  void _setupConnectivityListener() {
+    _authService.getConnectivityStream().listen((results) {
+      final isOnline =
+          results.contains(ConnectivityResult.mobile) ||
+          results.contains(ConnectivityResult.wifi) ||
+          results.contains(ConnectivityResult.ethernet);
+
+      if (mounted) {
+        setState(() {
+          _isOnline = isOnline;
+        });
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -27,6 +63,16 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleEmailAuth() async {
+    if (!_isOnline) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("You are offline. Connect to internet to login."),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -57,7 +103,9 @@ class _LoginScreenState extends State<LoginScreen> {
         if (_isLoginMode) {
           // Login mode - go to home
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(authService: _authService),
+            ),
           );
         } else {
           // Signup mode - go to email verification
@@ -93,24 +141,50 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _handleGoogleLogin() async {
+  Future<void> _handleForgotPassword() async {
+    if (!_isOnline) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("You are offline. Connect to internet to reset password."),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_emailController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Please enter your email to reset password"),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      User? user = await _authService.loginWithGoogle();
-
-      if (user != null && mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const HomeScreen()),
+      await _authService.resetPassword(_emailController.text.trim());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Password reset link sent! Please check your inbox."),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 4),
+          ),
         );
       }
     } on FirebaseAuthException catch (e) {
       if (mounted) {
+        String errorMessage = "Error sending reset email";
+        if (e.code == 'user-not-found') {
+          errorMessage = "No user found with this email";
+        } else if (e.code == 'invalid-email') {
+          errorMessage = "Invalid email format";
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Google login failed: ${e.message}"),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
         );
       }
     } finally {
@@ -132,145 +206,192 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         title: const Text("Email Authentication"),
       ),
-      backgroundColor: const Color(0xFFF5F7FA),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 40),
+      backgroundColor: const Color(0xFFFAFAFA),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 40),
 
-              /// Header
-              const Text(
-                "Welcome to JNTUK Notes",
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.indigo,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _isLoginMode ? "Login to continue" : "Create an account",
-                style: const TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-              const SizedBox(height: 40),
-
-              /// Email Field
-              TextField(
-                controller: _emailController,
-                enabled: !_isLoading,
-                decoration: InputDecoration(
-                  hintText: "Email",
-                  prefixIcon: const Icon(Icons.email_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.indigo),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              /// Password Field
-              TextField(
-                controller: _passwordController,
-                enabled: !_isLoading,
-                obscureText: _obscurePassword,
-                decoration: InputDecoration(
-                  hintText: "Password",
-                  prefixIcon: const Icon(Icons.lock_outlined),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _obscurePassword
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
+                    /// Header
+                    const Text(
+                      "Welcome to Student Notes",
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF374151),
+                      ),
                     ),
-                    onPressed: () {
-                      setState(() => _obscurePassword = !_obscurePassword);
-                    },
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: Colors.indigo),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              /// Email Login Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.indigo,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                    const SizedBox(height: 8),
+                    Text(
+                      _isLoginMode ? "Login to continue" : "Create an account",
+                      style: const TextStyle(fontSize: 16, color: Colors.grey),
                     ),
-                  ),
-                  onPressed: _isLoading ? null : _handleEmailAuth,
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
-                            strokeWidth: 2,
+                    const SizedBox(height: 40),
+
+                    /// Email Field
+                    TextField(
+                      controller: _emailController,
+                      enabled: !_isLoading && _isOnline,
+                      decoration: InputDecoration(
+                        hintText: "Email",
+                        prefixIcon: const Icon(Icons.email_outlined),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    /// Password Field
+                    TextField(
+                      controller: _passwordController,
+                      enabled: !_isLoading && _isOnline,
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
+                        hintText: "Password",
+                        prefixIcon: const Icon(Icons.lock_outlined),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off_outlined
+                                : Icons.visibility_outlined,
                           ),
-                        )
-                      : Text(
-                          _isLoginMode ? "Login" : "Sign Up",
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                          onPressed: () {
+                            setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            );
+                          },
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                    
+                    if (_isLoginMode) ...[
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: _isLoading || !_isOnline ? null : _handleForgotPassword,
+                          child: const Text(
+                            "Forgot Password?",
+                            style: TextStyle(color: Colors.blue),
                           ),
                         ),
+                      ),
+                      const SizedBox(height: 8),
+                    ] else ...[
+                      const SizedBox(height: 24),
+                    ],
+
+                    /// Email Login Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          side: const BorderSide(color: Colors.grey),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: _isLoading || !_isOnline
+                            ? null
+                            : _handleEmailAuth,
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Colors.black,
+                                  ),
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Text(
+                                _isLoginMode ? "Login" : "Sign Up",
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    /// Toggle Login/Signup
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          _isLoginMode
+                              ? "Don't have an account? "
+                              : "Already have an account? ",
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                        GestureDetector(
+                          onTap: _isLoading
+                              ? null
+                              : () {
+                                  setState(() => _isLoginMode = !_isLoginMode);
+                                  _emailController.clear();
+                                  _passwordController.clear();
+                                },
+                          child: Text(
+                            _isLoginMode ? "Sign Up" : "Login",
+                            style: const TextStyle(
+                              color: Colors.black87,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 60),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-
-              /// Toggle Login/Signup
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+            ),
+          ),
+          if (!_isOnline)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              color: Colors.orange[100],
+              child: Row(
                 children: [
-                  Text(
-                    _isLoginMode
-                        ? "Don't have an account? "
-                        : "Already have an account? ",
-                    style: const TextStyle(color: Colors.grey),
-                  ),
-                  GestureDetector(
-                    onTap: _isLoading
-                        ? null
-                        : () {
-                            setState(() => _isLoginMode = !_isLoginMode);
-                            _emailController.clear();
-                            _passwordController.clear();
-                          },
+                  Icon(Icons.wifi_off, color: Colors.orange[800], size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
                     child: Text(
-                      _isLoginMode ? "Sign Up" : "Login",
-                      style: const TextStyle(
-                        color: Colors.indigo,
-                        fontWeight: FontWeight.bold,
+                      "You are offline. Connect to internet to login.",
+                      style: TextStyle(
+                        color: Colors.orange[800],
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 60),
-            ],
-          ),
-        ),
+            ),
+        ],
       ),
     );
   }

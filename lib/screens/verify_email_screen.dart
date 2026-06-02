@@ -38,11 +38,18 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   bool _canResendEmail = true;
   int _resendCountdown = 0;
   Timer? _resendTimer;
+  Timer? _autoCheckTimer;
 
   @override
   void initState() {
     super.initState();
     _sendVerificationEmailOnInit();
+    
+    // Auto-check every 3 seconds
+    _autoCheckTimer = Timer.periodic(
+      const Duration(seconds: 3),
+      (_) => _autoCheckEmailVerification(),
+    );
   }
 
   Future<void> _sendVerificationEmailOnInit() async {
@@ -70,22 +77,6 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Error: $e"), backgroundColor: Colors.red),
-        );
-      }
-    }
-  }
-
-  Future<void> _sendVerificationEmail() async {
-    try {
-      final authService = AuthService();
-      await authService.sendEmailVerification();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Error sending email: $e"),
-            backgroundColor: Colors.red,
-          ),
         );
       }
     }
@@ -136,6 +127,35 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
           SnackBar(content: Text("Error checking verification: $e")),
         );
       }
+    }
+  }
+
+  Future<void> _autoCheckEmailVerification() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        await user.reload();
+        if (user.emailVerified) {
+          _autoCheckTimer?.cancel();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Email automatically verified! Redirecting..."),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+            await Future.delayed(const Duration(milliseconds: 500));
+            if (mounted) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => const HomeScreen()),
+              );
+            }
+          }
+        }
+      }
+    } catch (e) {
+      // Silently ignore errors during auto-check
     }
   }
 
@@ -242,7 +262,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.mail_outline, size: 80, color: Colors.indigo),
+              Icon(Icons.mail_outline, size: 80, color: Colors.grey),
               const SizedBox(height: 24),
               Text(
                 "Verify Your Email",
@@ -280,7 +300,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                           width: double.infinity,
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.indigo,
+                              backgroundColor: Colors.blue,
                               padding: const EdgeInsets.symmetric(vertical: 12),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -328,6 +348,7 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   @override
   void dispose() {
     _resendTimer?.cancel();
+    _autoCheckTimer?.cancel();
     super.dispose();
   }
 }

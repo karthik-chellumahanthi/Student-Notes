@@ -1,0 +1,13 @@
+flutter_launcher_icons:
+  image_path: "assets/images/logo.png"
+  remove_alpha_ios: true
+  android:
+    notification_icon: "launcher_notification"
+    adaptive_icon_background: "#FFFFFF"
+    adaptive_icon_foreground: "assets/images/logo.png"
+  ios:
+    image_path: "assets/images/logo.png"
+  windows:
+    image_path: "assets/images/logo.png"
+  macos:
+    image_path: "assets/images/logo.png"

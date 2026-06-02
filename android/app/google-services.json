@@ -7,26 +7,18 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:392869671158:android:cd35e1f184c1876e60bcd7",
+        "mobilesdk_app_id": "1:392869671158:android:283f3a71a88e909160bcd7",
         "android_client_info": {
-          "package_name": "com.karthik.jntuknotes"
+          "package_name": "com.karthik.studentnotes"
         }
       },
       "oauth_client": [
         {
-          "client_id": "392869671158-3r14gc5v3c3aja39mlco4h1qacoccl5g.apps.googleusercontent.com",
+          "client_id": "392869671158-fa4kae8sbopv2qb1990khtv00ooe1un1.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
-            "package_name": "com.karthik.jntuknotes",
+            "package_name": "com.karthik.studentnotes",
             "certificate_hash": "2dbc20dab9506e1ff614a04639f81d5abf7ffb85"
-          }
-        },
-        {
-          "client_id": "392869671158-f6587ckv4afhs8hs1c35ckf5jpa7h5cf.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.karthik.jntuknotes",
-            "certificate_hash": "960afeab80cab06f81864cd4a83ca312c3d452df"
           }
         },
         {
