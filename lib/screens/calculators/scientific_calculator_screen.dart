@@ -51,6 +51,38 @@ class _ScientificCalculatorScreenState
     '=',
   ];
 
+  void _liveCalculate() {
+    if (_equation.isEmpty) {
+      _result = "0";
+      return;
+    }
+
+    String expressionToParse = _equation;
+    expressionToParse = expressionToParse.replaceAll('×', '*');
+    expressionToParse = expressionToParse.replaceAll('÷', '/');
+    expressionToParse = expressionToParse.replaceAll('π', '3.1415926535897932');
+    expressionToParse = expressionToParse.replaceAll('e', '2.718281828459045');
+    expressionToParse = expressionToParse.replaceAll('%', '/100');
+    expressionToParse = expressionToParse.replaceAll('log(', 'log(10,');
+
+    try {
+      GrammarParser p = GrammarParser();
+      Expression exp = p.parse(expressionToParse);
+      ContextModel cm = ContextModel();
+      RealEvaluator evaluator = RealEvaluator(cm);
+
+      num eval = evaluator.evaluate(exp);
+
+      String res = eval.toString();
+      if (res.endsWith(".0")) {
+        res = res.substring(0, res.length - 2);
+      }
+      _result = res;
+    } catch (e) {
+      // Do nothing on syntax error during live input to keep last valid result
+    }
+  }
+
   void _buttonPressed(String buttonText) {
     setState(() {
       if (buttonText == "AC") {
@@ -62,6 +94,8 @@ class _ScientificCalculatorScreenState
         }
         if (_equation.isEmpty) {
           _result = "0";
+        } else {
+          _liveCalculate();
         }
       } else if (buttonText == "=") {
         _calculate();
@@ -71,6 +105,7 @@ class _ScientificCalculatorScreenState
         } else {
           _equation += buttonText;
         }
+        _liveCalculate();
       }
     });
   }
@@ -187,7 +222,8 @@ class _ScientificCalculatorScreenState
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const CalculatorHistoryScreen(),
+                  builder: (_) =>
+                      const CalculatorHistoryScreen(category: 'Scientific'),
                 ),
               );
             },

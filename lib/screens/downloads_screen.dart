@@ -228,7 +228,9 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                     horizontal: 16,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey[800]
+                        : Colors.grey[100],
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
@@ -280,17 +282,11 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                         displayName.length - 4,
                       );
                     }
-                    if (displayName.toLowerCase().endsWith('.docx') ||
-                        displayName.toLowerCase().endsWith('.pptx')) {
-                      displayName = displayName.substring(
-                        0,
-                        displayName.length - 5,
-                      );
-                    }
+
 
                     return Container(
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
@@ -334,10 +330,12 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                                             displayName,
                                             maxLines: 2,
                                             overflow: TextOverflow.ellipsis,
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontWeight: FontWeight.bold,
                                               fontSize: 16,
-                                              color: Colors.black87,
+                                              color: Theme.of(context).brightness == Brightness.dark
+                                                  ? Colors.white
+                                                  : Colors.black87,
                                             ),
                                           ),
                                           const SizedBox(height: 4),

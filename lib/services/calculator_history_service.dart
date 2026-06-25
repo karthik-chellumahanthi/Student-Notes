@@ -54,8 +54,24 @@ class CalculatorHistoryService {
     return history.map((e) => CalculationRecord.fromJson(jsonDecode(e))).toList();
   }
 
-  static Future<void> clearHistory() async {
+  static Future<void> clearHistory({String? category}) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_key);
+    if (category == null) {
+      await prefs.remove(_key);
+    } else {
+      List<String> history = prefs.getStringList(_key) ?? [];
+      List<CalculationRecord> records = history
+          .map((e) => CalculationRecord.fromJson(jsonDecode(e)))
+          .toList();
+
+      if (category == 'Scientific') {
+        records.removeWhere((r) => r.type == 'Scientific');
+      } else if (category == 'Academic') {
+        records.removeWhere((r) => r.type != 'Scientific');
+      }
+
+      await prefs.setStringList(
+          _key, records.map((r) => jsonEncode(r.toJson())).toList());
+    }
   }
 }

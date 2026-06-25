@@ -47,6 +47,8 @@ class _UnitsScreenState extends State<UnitsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return AppScaffold(
       currentIndex: 0,
       onBottomNavTap: (index) {
@@ -60,46 +62,96 @@ class _UnitsScreenState extends State<UnitsScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFE8E8E8),
+              color: isDark ? Colors.grey[800] : const Color(0xFFE8E8E8),
               borderRadius: BorderRadius.circular(16),
             ),
             margin: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   "Select Unit",
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   "Subject: ${widget.subjectName}",
-                  style: const TextStyle(fontSize: 14, color: Colors.black54),
+                  style: TextStyle(fontSize: 14, color: isDark ? Colors.grey[400] : Colors.black54),
                 ),
               ],
             ),
           ),
 
-          /// Firestore StreamBuilder for Units
+          /// Firestore FutureBuilder for Units
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
+            child: FutureBuilder<QuerySnapshot>(
+              future: FirebaseFirestore.instance
                   .collection('branches')
                   .doc(widget.branchId)
                   .collection('subjects')
                   .doc(widget.subjectId)
                   .collection('units')
-                  .snapshots(),
+                  .get(const GetOptions(source: Source.serverAndCache)),
               builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.wifi_off, size: 64, color: isDark ? Colors.grey[600] : Colors.grey[400]),
+                          const SizedBox(height: 16),
+                          Text(
+                            "No Internet Connection",
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Please check your network and try again.",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 14, color: isDark ? Colors.grey[500] : Colors.grey[500]),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  if (snapshot.hasData && snapshot.data!.metadata.isFromCache) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.wifi_off, size: 64, color: isDark ? Colors.grey[600] : Colors.grey[400]),
+                            const SizedBox(height: 16),
+                            Text(
+                              "No Internet Connection",
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              "Please connect to the internet to load units.",
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 14, color: isDark ? Colors.grey[500] : Colors.grey[500]),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
                   return Center(
                     child: Padding(
                       padding: const EdgeInsets.all(32),
@@ -136,7 +188,7 @@ class _UnitsScreenState extends State<UnitsScreen> {
                     return Container(
                       margin: const EdgeInsets.symmetric(vertical: 8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE8E8E8),
+                        color: isDark ? Colors.grey[800] : const Color(0xFFE8E8E8),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Material(
@@ -154,11 +206,11 @@ class _UnitsScreenState extends State<UnitsScreen> {
                             child: Row(
                               children: [
                                 CircleAvatar(
-                                  backgroundColor: Colors.grey[300],
+                                  backgroundColor: isDark ? Colors.grey[700] : Colors.grey[300],
                                   child: Text(
                                     "${index + 1}",
-                                    style: const TextStyle(
-                                      color: Colors.black54,
+                                    style: TextStyle(
+                                      color: isDark ? Colors.white : Colors.black54,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -171,10 +223,10 @@ class _UnitsScreenState extends State<UnitsScreen> {
                                     children: [
                                       Text(
                                         unitTitle,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
-                                          color: Colors.black87,
+                                          color: isDark ? Colors.white : Colors.black87,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
@@ -182,7 +234,7 @@ class _UnitsScreenState extends State<UnitsScreen> {
                                         'Tap to view PDF',
                                         style: TextStyle(
                                           fontSize: 12,
-                                          color: Colors.grey[600],
+                                          color: isDark ? Colors.grey[400] : Colors.grey[600],
                                         ),
                                       ),
                                     ],
@@ -345,15 +397,26 @@ class _UnitsScreenState extends State<UnitsScreen> {
 
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Download failed: ${e.toString()}'),
-                  backgroundColor: Colors.red,
+                  content: Row(
+                    children: [
+                      const Icon(Icons.wifi_off, color: Colors.white),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text('Download failed. No internet connection.'),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: Colors.red[700],
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  margin: const EdgeInsets.all(16),
                   duration: const Duration(seconds: 3),
                 ),
               );
             }
           });
     } catch (e) {
-            final key = '$subjectName-$unitNumber';
+      final key = '$subjectName-$unitNumber';
       if (mounted) {
         setState(() {
           _downloadingUnits.remove(key);
@@ -363,8 +426,19 @@ class _UnitsScreenState extends State<UnitsScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            content: Row(
+              children: [
+                const Icon(Icons.wifi_off, color: Colors.white),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text('Failed to start download. Please check your internet connection.'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red[700],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
             duration: const Duration(seconds: 3),
           ),
         );
@@ -373,41 +447,13 @@ class _UnitsScreenState extends State<UnitsScreen> {
   }
 
   Widget _getViewerScreen(String filePath, String fileName) {
-    // Try to get extension from filePath first, then from fileName
-    String extension = '';
-
-    if (filePath.contains('.')) {
-      extension = filePath.split('.').last.toLowerCase();
-    } else if (fileName.contains('.')) {
-      extension = fileName.split('.').last.toLowerCase();
-    }
-
-    
-    switch (extension) {
-      case 'pdf':
-        return PDFViewerScreen.file(
-          filePath: filePath,
-          fileName: fileName,
-          subject: widget.subjectName,
-        );
-      default:
-        // For unknown or other formats, use the file name for detection
-        final docType = FileTypeService.detectType(fileName);
-        
-        if (docType == DocumentType.pdf) {
-          return PDFViewerScreen.file(
-            filePath: filePath,
-            fileName: fileName,
-            subject: widget.subjectName,
-          );
-        } else {
-          // Default to document viewer
-          return DocumentViewerScreen.file(
-            filePath: filePath,
-            fileName: fileName,
-          );
-        }
-    }
+    // Since all uploads are strictly PDFs, always return the PDFViewerScreen directly.
+    // This bypasses any file extension checking and prevents failures on files with missing extensions.
+    return PDFViewerScreen.file(
+      filePath: filePath,
+      fileName: fileName,
+      subject: widget.subjectName,
+    );
   }
 
   Future<void> _openDownloadedFile(
@@ -498,11 +544,11 @@ class _UnitsScreenState extends State<UnitsScreen> {
       if (mounted) {
         Navigator.pop(context); // Close loading dialog
 
-        // 🔥 NAVIGATE TO DOCUMENT VIEWER with signed URL
-                Navigator.push(
+        // 🔥 NAVIGATE TO PDF VIEWER directly with signed URL
+        Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => DocumentViewerScreen.network(
+            builder: (_) => PDFViewerScreen.network(
               url: url,
               fileName: title,
               subject: widget.subjectName,
@@ -516,8 +562,19 @@ class _UnitsScreenState extends State<UnitsScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading document: ${e.toString()}'),
-            backgroundColor: Colors.red,
+            content: Row(
+              children: [
+                const Icon(Icons.wifi_off, color: Colors.white),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text('No internet connection. Please try again later.'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red[700],
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            margin: const EdgeInsets.all(16),
             duration: const Duration(seconds: 3),
           ),
         );

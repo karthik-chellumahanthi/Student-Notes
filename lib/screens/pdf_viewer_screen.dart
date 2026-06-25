@@ -2,85 +2,10 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pdfx/pdfx.dart';
-import 'package:open_file_android/open_file_android.dart';
 import '../services/screen_security_service.dart';
 import '../services/pdf_cache_service.dart';
 import '../services/history_service.dart';
 import '../services/encryption_service.dart';
-
-// 🔒 SCREENSHOT & SCREEN RECORDING PREVENTION IMPLEMENTATION GUIDE
-// ================================================================
-// To implement screenshot and screen recording prevention, follow these steps:
-//
-// 1. ANDROID IMPLEMENTATION (android/app/src/main/kotlin/com/example/jntuk_notes/MainActivity.kt):
-//
-//    import android.view.WindowManager
-//    import android.os.Build
-//
-//    class MainActivity: FlutterActivity() {
-//      private val CHANNEL = "com.example.jntuk_notes/security"
-//
-//      override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
-//        super.configureFlutterEngine(flutterEngine)
-//
-//        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
-//          .setMethodCallHandler { call, result ->
-//            when (call.method) {
-//              "disableScreenshots" -> {
-//                window.setFlags(
-//                  WindowManager.LayoutParams.FLAG_SECURE,
-//                  WindowManager.LayoutParams.FLAG_SECURE
-//                )
-//                result.success(true)
-//              }
-//              "enableScreenshots" -> {
-//                window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
-//                result.success(true)
-//              }
-//              else -> result.notImplemented()
-//            }
-//          }
-//      }
-//    }
-//
-// 2. iOS IMPLEMENTATION (ios/Runner/GeneratedPluginRegistrant.swift or AppDelegate):
-//
-//    import UIKit
-//
-//    @UIApplicationMain
-//    @objc class GeneratedPluginRegistrant: NSObject {
-//      static func register(with registry: FlutterEngine) {
-//        let controller = registry.rootViewController as! FlutterViewController
-//        let channel = FlutterMethodChannel(
-//          name: "com.example.jntuk_notes/security",
-//          binaryMessenger: controller.binaryMessenger
-//        )
-//
-//        channel.setMethodCallHandler { (call: FlutterMethodCall, result: @escaping FlutterResult) in
-//          switch call.method {
-//          case "disableScreenshots":
-//            UIApplication.shared.isIdleTimerDisabled = true
-//            // For iOS 11+, disable screenshot notifications
-//            if #available(iOS 13.0, *) {
-//              controller.view.window?.windowScene?.screenshotService?.delegate = self
-//            }
-//            result(true)
-//          case "enableScreenshots":
-//            UIApplication.shared.isIdleTimerDisabled = false
-//            result(true)
-//          default:
-//            result(FlutterMethodNotImplemented)
-//          }
-//        }
-//      }
-//    }
-//
-// 3. After implementing the native code, uncomment the MethodChannel calls in initState() and dispose()
-//    methods of this file.
-//
-// 4. Update the channel name in both Dart and native code to match your app's package name.
-//
-// ================================================================
 
 class PDFViewerScreen extends StatefulWidget {
   final String filePath;
@@ -133,6 +58,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
   int _totalPages = 0;
   int _currentPage = 1;
   bool _isLoading = true;
+  final ValueNotifier<double?> _downloadProgress = ValueNotifier(null);
   String? _error;
   late HistoryService _historyService;
   late EncryptionService _encryptionService;
@@ -144,40 +70,6 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
     _initializeEncryptionAndLoad();
     // Enable secure mode to prevent screenshots
     ScreenSecurityService.enableSecureMode();
-
-    // 🔒 SCREENSHOT & SCREEN RECORDING PREVENTION (Uncomment after build)
-    // Uncomment the code below after building the app to prevent screenshots and screen recordings
-    /*
-    // Android screenshot prevention
-    if (Platform.isAndroid) {
-      const platform = MethodChannel('com.example.jntuk_notes/security');
-      try {
-        // Prevent screenshots on Android
-        await platform.invokeMethod('disableScreenshots');
-        debugPrint('✅ Screenshots disabled on Android');
-      } catch (e) {
-        debugPrint('❌ Failed to disable screenshots: $e');
-      }
-    }
-    
-    // iOS screenshot prevention
-    if (Platform.isIOS) {
-      const platform = MethodChannel('com.example.jntuk_notes/security');
-      try {
-        // Prevent screenshots on iOS
-        await platform.invokeMethod('disableScreenshots');
-        debugPrint('✅ Screenshots disabled on iOS');
-      } catch (e) {
-        debugPrint('❌ Failed to disable screenshots: $e');
-      }
-    }
-    
-    // Alternative: Use FLAG_SECURE on Android
-    // This is a more reliable way to prevent screenshots and screen recordings
-    // Requires native Android implementation with FLAG_SECURE window flag
-    // See android/app/src/main/kotlin/com/example/jntuk_notes/MainActivity.kt
-    // Add: window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
-    */
 
     // Lock orientation to portrait
     SystemChrome.setPreferredOrientations([
@@ -242,21 +134,8 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
       _encryptionService.deleteTempFile(_tempDecryptedFilePath!);
     }
 
-    // 🔓 RE-ENABLE SCREENSHOTS & SCREEN RECORDING (Uncomment after build)
-    /*
-    // Re-enable screenshots when leaving PDF viewer
-    if (Platform.isAndroid || Platform.isIOS) {
-      const platform = MethodChannel('com.example.jntuk_notes/security');
-      try {
-        await platform.invokeMethod('enableScreenshots');
-        debugPrint('✅ Screenshots re-enabled');
-      } catch (e) {
-        debugPrint('❌ Failed to re-enable screenshots: $e');
-      }
-    }
-    */
-
     _pdfController?.dispose();
+    _downloadProgress.dispose();
     // Reset orientation to default
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     super.dispose();
@@ -277,42 +156,6 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
 
   Future<void> _loadPDF(String filePath) async {
     try {
-      // For local files, open with native handler instead of pdfx viewer
-      if (!widget.isNetworkPdf && filePath.isNotEmpty) {
-        debugPrint('📄 Opening local PDF file: $filePath');
-
-        final file = File(filePath);
-        if (!file.existsSync()) {
-          throw Exception('File not found: $filePath');
-        }
-
-        // Try to open with native app
-        try {
-          final result = await OpenFileAndroid().open(
-            filePath,
-            type: 'application/pdf',
-          );
-          debugPrint('📂 File opened: $result');
-          // If successful, pop back
-          if (mounted) {
-            Navigator.pop(context);
-          }
-          return;
-        } catch (e) {
-          debugPrint('⚠️ Could not open with native handler: $e');
-          // Fall back to showing error
-          if (mounted) {
-            setState(() {
-              _error =
-                  'Could not open file. Please try opening with a file manager.';
-              _isLoading = false;
-            });
-          }
-          return;
-        }
-      }
-
-      // For network files, load using pdfx viewer
       late Future<PdfDocument> documentFuture;
 
       if (widget.isNetworkPdf && widget.url != null) {
@@ -320,7 +163,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
         debugPrint('📄 Loading PDF from URL: ${widget.url}');
         documentFuture = _loadNetworkPdf(widget.url!);
       } else {
-        // Fallback: Load PDF from local file using pdfx
+        // Load PDF from local file using pdfx
         debugPrint('📄 Loading PDF from file using pdfx: $filePath');
         final file = File(filePath);
         if (!file.existsSync()) {
@@ -332,7 +175,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
           }
           return;
         }
-        documentFuture = PdfDocument.openFile(widget.filePath);
+        documentFuture = PdfDocument.openFile(filePath);
       }
 
       _pdfController = PdfControllerPinch(document: documentFuture);
@@ -358,9 +201,21 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
   Future<PdfDocument> _loadNetworkPdf(String url) async {
     debugPrint('📥 Loading PDF (with cache check)...');
     try {
+      DateTime lastUpdateTime = DateTime.now();
       // Use PdfCacheService to get or download PDF
-      final pdfFile = await PdfCacheService.getPdf(url);
+      final pdfFile = await PdfCacheService.getPdf(url, onProgress: (progress) {
+        if (mounted) {
+          final now = DateTime.now();
+          if (now.difference(lastUpdateTime).inMilliseconds >= 1000 || progress >= 0.99) {
+            lastUpdateTime = now;
+            _downloadProgress.value = progress;
+          }
+        }
+      });
       debugPrint('✅ PDF file ready: ${pdfFile.path}');
+      if (mounted) {
+        _downloadProgress.value = null; // Download finished
+      }
       return PdfDocument.openFile(pdfFile.path);
     } catch (e) {
       debugPrint('❌ Error loading PDF: $e');
@@ -412,9 +267,38 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    'Preparing document for viewing',
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                  ValueListenableBuilder<double?>(
+                    valueListenable: _downloadProgress,
+                    builder: (context, progress, child) {
+                      if (progress != null) {
+                        return Column(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 48),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: progress,
+                                  backgroundColor: Colors.grey.shade300,
+                                  valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6B7280)),
+                                  minHeight: 8,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Loading... ${(progress * 100).toInt()}%',
+                              style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                            ),
+                          ],
+                        );
+                      } else {
+                        return Text(
+                          'Preparing document for viewing',
+                          style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                        );
+                      }
+                    },
                   ),
                   const SizedBox(height: 24),
                   Container(

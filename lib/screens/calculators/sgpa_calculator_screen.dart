@@ -87,6 +87,7 @@ class _SgpaCalculatorScreenState extends State<SgpaCalculatorScreen> {
       appBar: AppBar(
         title: const Text('SGPA Calculator'),
         backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -115,14 +116,18 @@ class _SgpaCalculatorScreenState extends State<SgpaCalculatorScreen> {
                           width: 28,
                           height: 28,
                           decoration: BoxDecoration(
-                            color: Colors.green[100],
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.green.withValues(alpha: 0.2)
+                                : Colors.green[100],
                             shape: BoxShape.circle,
                           ),
                           child: Center(
                             child: Text(
                               '${index + 1}',
                               style: TextStyle(
-                                color: Colors.green[800],
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.green[300]
+                                    : Colors.green[800],
                                 fontWeight: FontWeight.bold,
                                 fontSize: 12,
                               ),
@@ -210,7 +215,7 @@ class _SgpaCalculatorScreenState extends State<SgpaCalculatorScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).cardColor,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),
@@ -227,16 +232,22 @@ class _SgpaCalculatorScreenState extends State<SgpaCalculatorScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text(
+                        Text(
                           'Your SGPA: ',
-                          style: TextStyle(fontSize: 20, color: Colors.grey),
+                          style: TextStyle(
+                              fontSize: 20,
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.grey[400]
+                                  : Colors.grey),
                         ),
                         Text(
                           _result!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
-                            color: Colors.green,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.green[300]
+                                : Colors.green,
                           ),
                         ),
                       ],

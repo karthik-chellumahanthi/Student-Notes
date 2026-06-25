@@ -198,7 +198,9 @@ class _HistoryScreenState extends State<HistoryScreen>
                   width: double.infinity,
                   padding: const EdgeInsets.all(32),
                   decoration: BoxDecoration(
-                    color: Colors.grey[100],
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.grey[800]
+                        : Colors.grey[100],
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
@@ -246,13 +248,7 @@ class _HistoryScreenState extends State<HistoryScreen>
                         displayName.length - 4,
                       );
                     }
-                    if (displayName.toLowerCase().endsWith('.docx') ||
-                        displayName.toLowerCase().endsWith('.pptx')) {
-                      displayName = displayName.substring(
-                        0,
-                        displayName.length - 5,
-                      );
-                    }
+
 
                     // Detect file type for proper icon
                     var fileType = FileTypeService.detectType(item.filePath);
@@ -276,11 +272,16 @@ class _HistoryScreenState extends State<HistoryScreen>
 
                     return Container(
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey[300]!),
+                        border: Border.all(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey[700]!
+                              : Colors.grey[300]!,
+                        ),
                         borderRadius: BorderRadius.circular(12),
+                        color: Theme.of(context).cardColor,
                       ),
                       child: Material(
-                        color: Colors.white,
+                        color: Colors.transparent,
                         child: InkWell(
                           borderRadius: BorderRadius.circular(12),
                           onTap: () => _openHistoryItem(item),
@@ -299,10 +300,12 @@ class _HistoryScreenState extends State<HistoryScreen>
                                         displayName,
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
-                                          color: Colors.black87,
+                                          color: Theme.of(context).brightness == Brightness.dark
+                                              ? Colors.white
+                                              : Colors.black87,
                                         ),
                                       ),
                                       const SizedBox(height: 4),

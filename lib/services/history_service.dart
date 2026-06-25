@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class HistoryItem {
   final String id;
   final String name;
-  final String type; // 'note' or 'question_paper'
+  final String type; // 'note'
   final String filePath;
   final String subject;
   final DateTime openedAt;
@@ -57,7 +57,7 @@ class HistoryService {
   Future<void> addToHistory({
     required String id,
     required String name,
-    required String type, // 'note' or 'question_paper'
+    required String type, // 'note'
     required String filePath,
     String subject = '',
   }) async {
@@ -111,10 +111,6 @@ class HistoryService {
     return history.where((item) => item.type == 'note').toList();
   }
 
-  Future<List<HistoryItem>> getQuestionPaperHistory() async {
-    final history = await getHistory();
-    return history.where((item) => item.type == 'question_paper').toList();
-  }
 
   Future<void> removeFromHistory(String id) async {
     try {
@@ -152,17 +148,4 @@ class HistoryService {
     }
   }
 
-  Future<void> clearQuestionPaperHistory() async {
-    try {
-      final history = await getHistory();
-      history.removeWhere((item) => item.type == 'question_paper');
-
-      final jsonList = history
-          .map((item) => jsonEncode(item.toJson()))
-          .toList();
-      await _prefs.setStringList(_historyKey, jsonList);
-    } catch (e) {
-      // Error clearing question paper history, silently fail
-    }
-  }
 }

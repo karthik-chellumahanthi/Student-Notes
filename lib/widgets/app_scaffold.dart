@@ -7,6 +7,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/remote_config_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../screens/upload_screen.dart';
+import 'subject_search_delegate.dart';
 
 class AppScaffold extends StatelessWidget {
   final Widget body;
@@ -271,7 +273,19 @@ class AppScaffold extends StatelessWidget {
             Text("Student Notes"),
           ],
         ),
-        actions: const [NotificationIcon(), SizedBox(width: 8)],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {
+              showSearch(
+                context: context,
+                delegate: SubjectSearchDelegate(),
+              );
+            },
+          ),
+          const NotificationIcon(), 
+          const SizedBox(width: 8)
+        ],
       ),
       drawer: showDrawer
           ? Drawer(
@@ -356,6 +370,20 @@ class AppScaffold extends StatelessWidget {
                       } else {
                         onBottomNavTap(3);
                       }
+                    },
+                  ),
+                  const Divider(),
+                  ListTile(
+                    leading: const Icon(Icons.cloud_upload),
+                    title: const Text('Upload Files'),
+                    onTap: () {
+                      Navigator.pop(context); // Close drawer
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const UploadScreen(),
+                        ),
+                      );
                     },
                   ),
                   const Divider(),

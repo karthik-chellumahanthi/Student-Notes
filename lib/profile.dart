@@ -19,6 +19,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -28,8 +30,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: const Color(0xFFE8E8E8),
+              color: isDark ? Colors.grey[850] : const Color(0xFFE8E8E8),
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? Colors.blueGrey[700]! : Colors.transparent,
+                width: 1,
+              ),
             ),
             child: Row(
               children: [
@@ -37,13 +43,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFD1D5DB),
+                    color: isDark ? Colors.grey[800] : const Color(0xFFD1D5DB),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.account_circle,
                     size: 80,
-                    color: Colors.black54,
+                    color: isDark ? Colors.grey[500] : Colors.black54,
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -53,18 +59,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       Text(
                         _currentUser?.displayName ?? "User",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: isDark ? Colors.white : Colors.black87,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         _currentUser?.email ?? "No email",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
-                          color: Colors.black54,
+                          color: isDark ? Colors.grey[400] : Colors.black54,
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -74,14 +80,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           horizontal: 8,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.green[100],
+                          color: isDark ? const Color(0xFF064E3B).withOpacity(0.6) : Colors.green[100],
                           borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isDark ? const Color(0xFF059669) : Colors.transparent,
+                          ),
                         ),
-                        child: const Text(
+                        child: Text(
                           "Verified",
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.green,
+                            color: isDark ? const Color(0xFF34D399) : Colors.green,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -96,9 +105,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 32),
 
           /// Account Information Section
-          const Text(
+          Text(
             "Account Information",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 18, 
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
           ),
           const SizedBox(height: 16),
 
@@ -106,26 +119,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFE8E8E8),
+              color: isDark ? Colors.grey[850] : const Color(0xFFE8E8E8),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isDark ? Colors.blueGrey[700]! : Colors.transparent,
+                width: 1,
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   "Email Address",
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.black54,
+                    color: isDark ? Colors.grey[400] : Colors.black54,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   _currentUser?.email ?? "Not available",
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
-                    color: Colors.black87,
+                    color: isDark ? Colors.white : Colors.black87,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -138,17 +155,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFE8E8E8),
+              color: isDark ? Colors.grey[850] : const Color(0xFFE8E8E8),
               borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isDark ? Colors.blueGrey[700]! : Colors.transparent,
+                width: 1,
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   "Email Verification",
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.black54,
+                    color: isDark ? Colors.grey[400] : Colors.black54,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -160,8 +181,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ? Icons.check_circle
                           : Icons.cancel,
                       color: _currentUser?.emailVerified ?? false
-                          ? Colors.green
-                          : Colors.red,
+                          ? (isDark ? const Color(0xFF34D399) : Colors.green)
+                          : (isDark ? const Color(0xFFF87171) : Colors.red),
                       size: 20,
                     ),
                     const SizedBox(width: 8),
@@ -172,8 +193,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       style: TextStyle(
                         fontSize: 16,
                         color: _currentUser?.emailVerified ?? false
-                            ? Colors.green
-                            : Colors.red,
+                            ? (isDark ? const Color(0xFF34D399) : Colors.green)
+                            : (isDark ? const Color(0xFFF87171) : Colors.red),
                         fontWeight: FontWeight.w500,
                       ),
                     ),

@@ -7,6 +7,8 @@ import 'home.dart';
 import 'services/auth_service.dart';
 import 'services/theme_service.dart';
 import 'services/remote_config_service.dart';
+import 'package:provider/provider.dart';
+import 'providers/home_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,7 +16,14 @@ void main() async {
   await RemoteConfigService.initialize();
   await ThemeService.init();
 
-  runApp(const StudentNotesApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => HomeProvider()),
+      ],
+      child: const StudentNotesApp(),
+    ),
+  );
 }
 
 class StudentNotesApp extends StatefulWidget {

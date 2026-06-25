@@ -1,0 +1,18 @@
+name = "student-notes-uploader"
+main = "index.js"
+compatibility_date = "2024-05-12"
+
+# Bind your R2 bucket here. 
+# Make sure the bucket_name exactly matches your new R2 bucket name in Cloudflare
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "student-notes-submissions"
+
+# KV Namespace for rate limiting
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "b3b3b4eb3d0c4cbcabe8dff8fee07d57"
+
+# Environment Variables (Secrets should not be put here directly, we will add them via CLI or Dashboard)
+[vars]
+ADMIN_EMAIL = "karthikch834@gmail.com"

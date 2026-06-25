@@ -109,6 +109,7 @@ class _CgpaCalculatorScreenState extends State<CgpaCalculatorScreen> {
       appBar: AppBar(
         title: const Text('CGPA Calculator'),
         backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -137,7 +138,9 @@ class _CgpaCalculatorScreenState extends State<CgpaCalculatorScreen> {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: Colors.blue[50],
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.blue.withValues(alpha: 0.2)
+                                : Colors.blue[50],
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Center(
@@ -145,7 +148,9 @@ class _CgpaCalculatorScreenState extends State<CgpaCalculatorScreen> {
                               'Sem\n${index + 1}',
                               textAlign: TextAlign.center,
                               style: TextStyle(
-                                color: Colors.blue[800],
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.blue[300]
+                                    : Colors.blue[800],
                                 fontWeight: FontWeight.bold,
                                 fontSize: 11,
                               ),
@@ -205,7 +210,7 @@ class _CgpaCalculatorScreenState extends State<CgpaCalculatorScreen> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).cardColor,
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.05),
@@ -222,16 +227,22 @@ class _CgpaCalculatorScreenState extends State<CgpaCalculatorScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Text(
+                        Text(
                           'Your CGPA: ',
-                          style: TextStyle(fontSize: 20, color: Colors.grey),
+                          style: TextStyle(
+                              fontSize: 20,
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.grey[400]
+                                  : Colors.grey),
                         ),
                         Text(
                           _result!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
-                            color: Colors.blue,
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.blue[300]
+                                : Colors.blue,
                           ),
                         ),
                       ],

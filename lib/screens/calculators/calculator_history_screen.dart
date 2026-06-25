@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../../services/calculator_history_service.dart';
 
 class CalculatorHistoryScreen extends StatefulWidget {
-  const CalculatorHistoryScreen({super.key});
+  final String? category;
+
+  const CalculatorHistoryScreen({super.key, this.category});
 
   @override
   State<CalculatorHistoryScreen> createState() =>
@@ -23,7 +25,13 @@ class _CalculatorHistoryScreenState extends State<CalculatorHistoryScreen> {
     final records = await CalculatorHistoryService.getHistory();
     if (mounted) {
       setState(() {
-        _history = records;
+        if (widget.category == 'Scientific') {
+          _history = records.where((r) => r.type == 'Scientific').toList();
+        } else if (widget.category == 'Academic') {
+          _history = records.where((r) => r.type != 'Scientific').toList();
+        } else {
+          _history = records;
+        }
         _isLoading = false;
       });
     }
@@ -51,7 +59,7 @@ class _CalculatorHistoryScreenState extends State<CalculatorHistoryScreen> {
     );
 
     if (confirm == true) {
-      await CalculatorHistoryService.clearHistory();
+      await CalculatorHistoryService.clearHistory(category: widget.category);
       _loadHistory();
     }
   }
@@ -93,6 +101,7 @@ class _CalculatorHistoryScreenState extends State<CalculatorHistoryScreen> {
       appBar: AppBar(
         title: const Text('Calculation History'),
         backgroundColor: Colors.orange,
+        foregroundColor: Colors.white,
         actions: [
           if (_history.isNotEmpty)
             IconButton(
@@ -109,11 +118,19 @@ class _CalculatorHistoryScreenState extends State<CalculatorHistoryScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.history, size: 64, color: Colors.grey[300]),
+                  Icon(Icons.history,
+                      size: 64,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[700]
+                          : Colors.grey[300]),
                   const SizedBox(height: 16),
                   Text(
                     'No calculations yet',
-                    style: TextStyle(fontSize: 18, color: Colors.grey[500]),
+                    style: TextStyle(
+                        fontSize: 18,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey[400]
+                            : Colors.grey[500]),
                   ),
                 ],
               ),
@@ -171,7 +188,9 @@ class _CalculatorHistoryScreenState extends State<CalculatorHistoryScreen> {
                             _formatDate(record.date),
                             style: TextStyle(
                               fontSize: 12,
-                              color: Colors.grey[500],
+                              color: Theme.of(context).brightness == Brightness.dark
+                                  ? Colors.grey[400]
+                                  : Colors.grey[500],
                             ),
                           ),
                         ],

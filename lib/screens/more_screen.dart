@@ -3,6 +3,8 @@ import 'history_screen.dart';
 import 'calculators/calculators_menu_screen.dart';
 import 'calculators/scientific_calculator_screen.dart';
 import 'calculators/attendance_calculator_screen.dart';
+import 'privacy_policy_screen.dart';
+import 'terms_conditions_screen.dart';
 
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
@@ -40,6 +42,20 @@ class _MoreScreenState extends State<MoreScreen> {
       title: 'Attendance Tracker',
       icon: Icons.checklist_rtl,
       color: Colors.teal,
+      isAvailable: true,
+    ),
+    MoreOption(
+      id: 6,
+      title: 'Privacy Policy',
+      icon: Icons.privacy_tip,
+      color: Colors.indigo,
+      isAvailable: true,
+    ),
+    MoreOption(
+      id: 7,
+      title: 'Terms & Conditions',
+      icon: Icons.gavel,
+      color: Colors.brown,
       isAvailable: true,
     ),
   ];
@@ -167,11 +183,17 @@ class _MoreScreenState extends State<MoreScreen> {
       case 5:
         targetScreen = const AttendanceCalculatorScreen();
         break;
+      case 6:
+        targetScreen = const PrivacyPolicyScreen();
+        break;
+      case 7:
+        targetScreen = const TermsConditionsScreen();
+        break;
       default:
         targetScreen = const Center(child: Text("Unknown Option"));
     }
 
-    if (option.id == 1 || option.id == 4 || option.id == 5) {
+    if (option.id == 1 || option.id == 4 || option.id == 5 || option.id == 6 || option.id == 7) {
       // Screens that have their own app bar, so we just push directly
       Navigator.push(
         context,

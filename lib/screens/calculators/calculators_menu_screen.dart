@@ -41,10 +41,12 @@ class CalculatorsMenuScreen extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white
+                            : Colors.black87,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -69,6 +71,7 @@ class CalculatorsMenuScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Calculators'),
         backgroundColor: Colors.orange,
+        foregroundColor: Colors.white,
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -119,7 +122,8 @@ class CalculatorsMenuScreen extends StatelessWidget {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => const CalculatorHistoryScreen(),
+                  builder: (_) =>
+                      const CalculatorHistoryScreen(category: 'Academic'),
                 ),
               ),
             ),

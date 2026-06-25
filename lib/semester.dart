@@ -32,6 +32,8 @@ class _SemesterScreenState extends State<SemesterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return AppScaffold(
       currentIndex: 0,
       onBottomNavTap: (index) {
@@ -49,24 +51,24 @@ class _SemesterScreenState extends State<SemesterScreen> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFE8E8E8),
+                color: isDark ? Colors.grey[800] : const Color(0xFFE8E8E8),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     "Select Semester",
                     style: TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: isDark ? Colors.white : Colors.black87,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     "Branch: ${widget.branch}",
-                    style: const TextStyle(fontSize: 14, color: Colors.black54),
+                    style: TextStyle(fontSize: 14, color: isDark ? Colors.grey[400] : Colors.black54),
                   ),
                 ],
               ),
@@ -88,13 +90,13 @@ class _SemesterScreenState extends State<SemesterScreen> {
               itemBuilder: (context, index) {
                 return Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8E8E8),
+                    color: isDark ? Colors.grey[800] : const Color(0xFFE8E8E8),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE8E8E8),
-                      foregroundColor: Colors.black87,
+                      backgroundColor: isDark ? Colors.grey[800] : const Color(0xFFE8E8E8),
+                      foregroundColor: isDark ? Colors.white : Colors.black87,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -130,53 +132,22 @@ class _SemesterScreenState extends State<SemesterScreen> {
     );
   }
 
-  Future<void> _navigateToSubjects(String semester) async {
-    try {
-      // Combine branch prefix with semester to create document ID
-      // e.g., "aid" + "1-1" = "aid_1-1"
-      String branchId = "${widget.branchPrefix}_$semester";
+  void _navigateToSubjects(String semester) {
+    // Combine branch prefix with semester to create document ID
+    // e.g., "aid" + "1-1" = "aid_1-1"
+    String branchId = "${widget.branchPrefix}_$semester";
 
-      // Use branchId directly to access the branch document
-      final branchDoc = await FirebaseFirestore.instance
-          .collection('branches')
-          .doc(branchId)
-          .get();
-
-      if (!mounted) return;
-
-      if (branchDoc.exists) {
-        final branchName = branchDoc['name'] ?? widget.branch;
-
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => SubjectsScreen(
-              branchId: branchId,
-              branchName: branchName,
-              semester: semester,
-            ),
-          ),
-        );
-      } else {
-        // Fallback if branch not found
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Branch "${widget.branch}" semester "$semester" not found in database',
-            ),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error loading subjects: $e'),
-          backgroundColor: Colors.red,
+    // Navigate instantly! 
+    // If the branch doesn't exist, SubjectsScreen will naturally show "No Subjects Found"
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SubjectsScreen(
+          branchId: branchId,
+          branchName: widget.branch,
+          semester: semester,
         ),
-      );
-    }
+      ),
+    );
   }
 }

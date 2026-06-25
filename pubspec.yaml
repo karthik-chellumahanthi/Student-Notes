@@ -40,19 +40,21 @@ dependencies:
   google_sign_in: ^6.2.0
   connectivity_plus: ^6.1.0
   path_provider: ^2.1.0
-  http: ^1.1.0
+  http: ^1.6.0
   permission_handler: ^11.4.0
   pdfx: ^2.8.0
   shared_preferences: ^2.2.0
   cloud_functions: ^5.1.0
   url_launcher: ^6.3.0
   open_file: ^3.5.0
-  file_picker: ^8.1.0
+  file_picker: ^11.0.2
   encrypt: ^5.0.1
   flutter_secure_storage: ^9.2.2
   math_expressions: ^3.1.0
   firebase_remote_config: ^5.5.0
   package_info_plus: ^9.0.1
+  provider: ^6.1.5+1
+  intl: ^0.20.2
 
 dev_dependencies:
   flutter_test:

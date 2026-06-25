@@ -70,19 +70,65 @@ class PdfCacheService {
     }
   }
 
+  static final Map<String, Future<File>> _activeDownloads = {};
+
   /// Download PDF from URL and cache it
-  static Future<File> downloadAndCachePdf(String url) async {
+  static Future<File> downloadAndCachePdf(String url, {void Function(double)? onProgress}) async {
     try {
-      final response = await http.get(Uri.parse(url));
-      if (response.statusCode != 200) {
+      final cacheDir = await _getCacheDirectory();
+      final cacheKey = _generateCacheKey(url);
+      final tempFile = File('${cacheDir.path}/$cacheKey.temp');
+      final pdfFile = File('${cacheDir.path}/$cacheKey.pdf');
+
+      int existingBytes = 0;
+      if (await tempFile.exists()) {
+        existingBytes = await tempFile.length();
+        // Check if the temp file is older than 24 hours, if so delete it instead of resuming
+        final lastModified = await tempFile.lastModified();
+        if (DateTime.now().difference(lastModified).inHours > 24) {
+          await tempFile.delete();
+          existingBytes = 0;
+        }
+      }
+
+      final request = http.Request('GET', Uri.parse(url));
+      if (existingBytes > 0) {
+        request.headers['Range'] = 'bytes=$existingBytes-';
+      }
+
+      final response = await http.Client().send(request);
+      
+      if (response.statusCode != 200 && response.statusCode != 206) {
         throw Exception('Failed to download PDF: ${response.statusCode}');
       }
 
-      final cacheDir = await _getCacheDirectory();
-      final cacheKey = _generateCacheKey(url);
-      final pdfFile = File('${cacheDir.path}/$cacheKey.pdf');
+      bool isPartial = response.statusCode == 206;
+      if (!isPartial) {
+        // Server doesn't support Range or sending full file.
+        existingBytes = 0;
+      }
 
-      await pdfFile.writeAsBytes(response.bodyBytes);
+      final contentLength = response.contentLength;
+      final totalExpectedBytes = existingBytes + (contentLength ?? 0);
+      int bytesDownloaded = existingBytes;
+
+      final sink = tempFile.openWrite(mode: isPartial ? FileMode.append : FileMode.write);
+
+      await for (final chunk in response.stream) {
+        bytesDownloaded += chunk.length;
+        sink.add(chunk);
+        
+        if (totalExpectedBytes > 0 && onProgress != null) {
+          onProgress(bytesDownloaded / totalExpectedBytes);
+        }
+      }
+
+      await sink.close();
+      
+      // Rename temp file to actual pdf file only after complete download
+      if (await tempFile.exists()) {
+        await tempFile.rename(pdfFile.path);
+      }
 
       return pdfFile;
     } catch (e) {
@@ -91,12 +137,32 @@ class PdfCacheService {
   }
 
   /// Get or download PDF (checks cache first)
-  static Future<File> getPdf(String url) async {
+  static Future<File> getPdf(String url, {void Function(double)? onProgress}) async {
     final cachedFile = await getCachedFile(url);
     if (cachedFile != null) {
+      if (onProgress != null) onProgress(1.0);
       return cachedFile;
     }
-    return downloadAndCachePdf(url);
+
+    // If a download for this URL is already in progress, wait for it to finish
+    if (_activeDownloads.containsKey(url)) {
+      final file = await _activeDownloads[url]!;
+      if (onProgress != null) onProgress(1.0);
+      return file;
+    }
+
+    // Otherwise, start a new download and track it
+    final downloadFuture = downloadAndCachePdf(url, onProgress: onProgress);
+    _activeDownloads[url] = downloadFuture;
+
+    try {
+      final file = await downloadFuture;
+      _activeDownloads.remove(url);
+      return file;
+    } catch (e) {
+      _activeDownloads.remove(url);
+      rethrow;
+    }
   }
 
   /// Clear all cached PDFs
@@ -116,22 +182,35 @@ class PdfCacheService {
     try {
       final cacheDir = await _getCacheDirectory();
       final files = await cacheDir.list().toList();
+      
+      // Clean up old temp files
+      final tempFiles = files.whereType<File>().where((f) => f.path.endsWith('.temp'));
+      for (final tempFile in tempFiles) {
+        final lastModified = await tempFile.lastModified();
+        if (DateTime.now().difference(lastModified).inHours > 24) {
+          try { await tempFile.delete(); } catch (_) {}
+        }
+      }
+
       final pdfFiles = files.whereType<File>().where(
         (f) => f.path.endsWith('.pdf'),
-      );
+      ).toList();
+
+      final stats = await Future.wait(pdfFiles.map((file) async {
+        final size = await file.length();
+        final lastModified = await file.lastModified();
+        final cacheAge = DateTime.now().difference(lastModified);
+        final isExpired = cacheAge.inMinutes > _cacheDurationMinutes;
+        return {'size': size, 'isExpired': isExpired};
+      }));
 
       int totalSize = 0;
       int validFiles = 0;
       int expiredFiles = 0;
 
-      for (final file in pdfFiles) {
-        final size = await file.length();
-        totalSize += size;
-
-        final lastModified = await file.lastModified();
-        final cacheAge = DateTime.now().difference(lastModified);
-
-        if (cacheAge.inMinutes > _cacheDurationMinutes) {
+      for (final stat in stats) {
+        totalSize += stat['size'] as int;
+        if (stat['isExpired'] as bool) {
           expiredFiles++;
         } else {
           validFiles++;

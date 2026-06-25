@@ -550,6 +550,19 @@ class _AttendanceCalculatorScreenState extends State<AttendanceCalculatorScreen>
                         fontWeight: FontWeight.w500,
                       ),
                     ),
+                    if (_calcPercentage < 75 && _calcPercentage > 0)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 16.0),
+                        child: Text(
+                          'Note: Remember that every future class you attend increases BOTH your "Attended" and "Total" classes. That\'s why it takes more classes than you might expect to raise your average!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
