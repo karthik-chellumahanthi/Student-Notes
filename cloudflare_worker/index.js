@@ -15,7 +15,7 @@ export default {
     // SECURITY: Restrict endpoints that modify state to only requests from our Flutter app
     if (url.pathname.startsWith("/upload/") || url.pathname === "/send-notification") {
       const appKey = request.headers.get("X-App-Key");
-      if (appKey !== "student_notes_secure_api_key_2026") {
+      if (appKey !== env.X_APP_KEY) {
         return new Response(JSON.stringify({ error: "Unauthorized app access. Invalid X-App-Key." }), {
           status: 403,
           headers: { "Content-Type": "application/json", ...corsHeaders }

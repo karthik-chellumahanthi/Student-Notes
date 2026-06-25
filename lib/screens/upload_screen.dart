@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'submission_history_screen.dart';
 
 class UploadScreen extends StatefulWidget {
@@ -97,7 +98,7 @@ class _UploadScreenState extends State<UploadScreen> {
       request.headers['Content-Length'] = fileLength.toString();
       request.headers['Content-Type'] = 'application/octet-stream';
       request.headers['X-User-ID'] = user.uid; // Required for Cloudflare KV rate limiting
-      request.headers['X-App-Key'] = 'student_notes_secure_api_key_2026';
+      request.headers['X-App-Key'] = dotenv.env['X_APP_KEY'] ?? '';
 
       int bytesUploaded = 0;
       DateTime lastUpdateTime = DateTime.now();
@@ -166,7 +167,7 @@ class _UploadScreenState extends State<UploadScreen> {
         Uri.parse('$_workerUrl/send-notification'),
         headers: {
           'Content-Type': 'application/json',
-          'X-App-Key': 'student_notes_secure_api_key_2026',
+          'X-App-Key': dotenv.env['X_APP_KEY'] ?? '',
         },
         body: jsonEncode({
           'submissionId': submissionRef.id,
