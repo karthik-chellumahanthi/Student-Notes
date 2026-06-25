@@ -9,6 +9,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../screens/upload_screen.dart';
 import 'subject_search_delegate.dart';
+import '../screens/privacy_policy_screen.dart';
+import '../screens/terms_conditions_screen.dart';
 
 class AppScaffold extends StatelessWidget {
   final Widget body;
@@ -420,6 +422,48 @@ class AppScaffold extends StatelessWidget {
                       Navigator.pop(context);
                       _showLogoutConfirmationDialog(context);
                     },
+                  ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        InkWell(
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const PrivacyPolicyScreen()),
+                            );
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8.0),
+                            child: Text(
+                              'Privacy Policy',
+                              style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const TermsConditionsScreen()),
+                            );
+                          },
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8.0),
+                            child: Text(
+                              'Terms & Conditions',
+                              style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                    ),
                   ),
                 ],
               ),

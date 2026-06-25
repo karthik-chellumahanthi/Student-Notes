@@ -31,7 +31,8 @@ class _UploadScreenState extends State<UploadScreen> {
   Future<void> _pickFile() async {
     try {
       FilePickerResult? result = await FilePicker.pickFiles(
-        type: FileType.any,
+        type: FileType.custom,
+        allowedExtensions: ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt', 'rtf', 'csv', 'jpg', 'jpeg', 'png', 'zip', 'rar', '7z'],
       );
 
       if (result != null) {
