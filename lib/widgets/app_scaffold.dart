@@ -12,7 +12,7 @@ import 'subject_search_delegate.dart';
 import '../screens/privacy_policy_screen.dart';
 import '../screens/terms_conditions_screen.dart';
 
-class AppScaffold extends StatelessWidget {
+class AppScaffold extends StatefulWidget {
   final Widget body;
   final int currentIndex;
   final Function(int) onBottomNavTap;
@@ -30,9 +30,16 @@ class AppScaffold extends StatelessWidget {
     this.showBottomNav = true,
   });
 
-  void _showFeedbackDialog(BuildContext context) {
+  @override
+  State<AppScaffold> createState() => _AppScaffoldState();
+}
+
+class _AppScaffoldState extends State<AppScaffold> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  Future<void> _showFeedbackDialog(BuildContext context) async {
     // First ask if user is enjoying the app
-    showDialog(
+    final bool? result = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
@@ -44,18 +51,14 @@ class AppScaffold extends StatelessWidget {
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
               onPressed: () {
-                Navigator.of(context).pop();
-                // Negative response - show feedback form
-                _showInAppFeedbackDialog(context);
+                Navigator.of(context).pop(false);
               },
               child: const Text('No', style: TextStyle(color: Colors.white)),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
               onPressed: () {
-                Navigator.of(context).pop();
-                // Positive response - redirect to Play Store
-                _openPlayStore(context);
+                Navigator.of(context).pop(true);
               },
               child: const Text('Yes', style: TextStyle(color: Colors.white)),
             ),
@@ -63,6 +66,16 @@ class AppScaffold extends StatelessWidget {
         );
       },
     );
+
+    if (result == false) {
+      if (context.mounted) {
+        await _showInAppFeedbackDialog(context);
+      }
+    } else if (result == true) {
+      if (context.mounted) {
+        _openPlayStore(context);
+      }
+    }
   }
 
   void _openPlayStore(BuildContext context) async {
@@ -81,11 +94,11 @@ class AppScaffold extends StatelessWidget {
     }
   }
 
-  void _showInAppFeedbackDialog(BuildContext context) {
+  Future<void> _showInAppFeedbackDialog(BuildContext context) async {
     final TextEditingController feedbackController = TextEditingController();
     String selectedRating = '5';
 
-    showDialog(
+    await showDialog(
       context: context,
       builder: (BuildContext context) {
         return StatefulBuilder(
@@ -224,8 +237,8 @@ class AppScaffold extends StatelessWidget {
     );
   }
 
-  void _showLogoutConfirmationDialog(BuildContext context) {
-    showDialog(
+  Future<void> _showLogoutConfirmationDialog(BuildContext context) async {
+    await showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
@@ -266,6 +279,7 @@ class AppScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
         elevation: 0,
         title: Row(
@@ -289,7 +303,7 @@ class AppScaffold extends StatelessWidget {
           const SizedBox(width: 8)
         ],
       ),
-      drawer: showDrawer
+      drawer: widget.showDrawer
           ? Drawer(
               child: ListView(
                 padding: EdgeInsets.zero,
@@ -325,10 +339,10 @@ class AppScaffold extends StatelessWidget {
                       // Pop all nested screens to get back to HomeScreen
                       Navigator.of(context).popUntil((route) => route.isFirst);
                       // Update the current index to home
-                      if (onDrawerNavigate != null) {
-                        onDrawerNavigate!(0);
+                      if (widget.onDrawerNavigate != null) {
+                        widget.onDrawerNavigate!(0);
                       } else {
-                        onBottomNavTap(0);
+                        widget.onBottomNavTap(0);
                       }
                     },
                   ),
@@ -339,10 +353,10 @@ class AppScaffold extends StatelessWidget {
                       Navigator.pop(context); // Close drawer
                       // Pop all nested screens first, then navigate to home with downloads tab
                       Navigator.of(context).popUntil((route) => route.isFirst);
-                      if (onDrawerNavigate != null) {
-                        onDrawerNavigate!(1);
+                      if (widget.onDrawerNavigate != null) {
+                        widget.onDrawerNavigate!(1);
                       } else {
-                        onBottomNavTap(1);
+                        widget.onBottomNavTap(1);
                       }
                     },
                   ),
@@ -353,10 +367,10 @@ class AppScaffold extends StatelessWidget {
                       Navigator.pop(context); // Close drawer
                       // Pop all nested screens first, then navigate to home with more tab
                       Navigator.of(context).popUntil((route) => route.isFirst);
-                      if (onDrawerNavigate != null) {
-                        onDrawerNavigate!(2);
+                      if (widget.onDrawerNavigate != null) {
+                        widget.onDrawerNavigate!(2);
                       } else {
-                        onBottomNavTap(2);
+                        widget.onBottomNavTap(2);
                       }
                     },
                   ),
@@ -367,10 +381,10 @@ class AppScaffold extends StatelessWidget {
                       Navigator.pop(context); // Close drawer
                       // Pop all nested screens first, then navigate to home with profile tab
                       Navigator.of(context).popUntil((route) => route.isFirst);
-                      if (onDrawerNavigate != null) {
-                        onDrawerNavigate!(3);
+                      if (widget.onDrawerNavigate != null) {
+                        widget.onDrawerNavigate!(3);
                       } else {
-                        onBottomNavTap(3);
+                        widget.onBottomNavTap(3);
                       }
                     },
                   ),
@@ -378,14 +392,15 @@ class AppScaffold extends StatelessWidget {
                   ListTile(
                     leading: const Icon(Icons.cloud_upload),
                     title: const Text('Upload Files'),
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(context); // Close drawer
-                      Navigator.push(
+                      await Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => const UploadScreen(),
                         ),
                       );
+                      _scaffoldKey.currentState?.openDrawer();
                     },
                   ),
                   const Divider(),
@@ -407,9 +422,10 @@ class AppScaffold extends StatelessWidget {
                   ListTile(
                     leading: const Icon(Icons.feedback_outlined),
                     title: const Text('Feedback'),
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(context);
-                      _showFeedbackDialog(context);
+                      await _showFeedbackDialog(context);
+                      _scaffoldKey.currentState?.openDrawer();
                     },
                   ),
                   ListTile(
@@ -418,9 +434,10 @@ class AppScaffold extends StatelessWidget {
                       'Logout',
                       style: TextStyle(color: Colors.red),
                     ),
-                    onTap: () {
+                    onTap: () async {
                       Navigator.pop(context);
-                      _showLogoutConfirmationDialog(context);
+                      await _showLogoutConfirmationDialog(context);
+                      _scaffoldKey.currentState?.openDrawer();
                     },
                   ),
                   const SizedBox(height: 16),
@@ -430,12 +447,13 @@ class AppScaffold extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         InkWell(
-                          onTap: () {
+                          onTap: () async {
                             Navigator.pop(context);
-                            Navigator.push(
+                            await Navigator.push(
                               context,
                               MaterialPageRoute(builder: (context) => const PrivacyPolicyScreen()),
                             );
+                            _scaffoldKey.currentState?.openDrawer();
                           },
                           child: const Padding(
                             padding: EdgeInsets.symmetric(vertical: 8.0),
@@ -446,12 +464,13 @@ class AppScaffold extends StatelessWidget {
                           ),
                         ),
                         InkWell(
-                          onTap: () {
+                          onTap: () async {
                             Navigator.pop(context);
-                            Navigator.push(
+                            await Navigator.push(
                               context,
                               MaterialPageRoute(builder: (context) => const TermsConditionsScreen()),
                             );
+                            _scaffoldKey.currentState?.openDrawer();
                           },
                           child: const Padding(
                             padding: EdgeInsets.symmetric(vertical: 8.0),
@@ -469,13 +488,13 @@ class AppScaffold extends StatelessWidget {
               ),
             )
           : null,
-      body: body,
-      bottomNavigationBar: showBottomNav
+      body: widget.body,
+      bottomNavigationBar: widget.showBottomNav
           ? BottomNavigationBar(
-              currentIndex: currentIndex,
+              currentIndex: widget.currentIndex,
               selectedItemColor: const Color(0xFF6B7280),
               unselectedItemColor: Colors.grey[400],
-              onTap: onBottomNavTap,
+              onTap: widget.onBottomNavTap,
               items: const [
                 BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
                 BottomNavigationBarItem(
