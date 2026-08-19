@@ -388,21 +388,22 @@ class _UnitsScreenState extends State<UnitsScreen> {
           })
           .catchError((e) {
             // Handle errors - only show if screen is still mounted
-                        if (mounted) {
+            if (mounted) {
               setState(() {
                 _downloadingUnits.remove(key);
                 _downloadProgress[key]?.dispose();
                 _downloadProgress.remove(key);
               });
 
+              final errorStr = e.toString().replaceAll('Exception: ', '');
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Row(
                     children: [
-                      const Icon(Icons.wifi_off, color: Colors.white),
+                      const Icon(Icons.error_outline, color: Colors.white),
                       const SizedBox(width: 12),
-                      const Expanded(
-                        child: Text('Download failed. No internet connection.'),
+                      Expanded(
+                        child: Text('Download failed: $errorStr'),
                       ),
                     ],
                   ),
@@ -410,7 +411,7 @@ class _UnitsScreenState extends State<UnitsScreen> {
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   margin: const EdgeInsets.all(16),
-                  duration: const Duration(seconds: 3),
+                  duration: const Duration(seconds: 4),
                 ),
               );
             }
@@ -424,14 +425,15 @@ class _UnitsScreenState extends State<UnitsScreen> {
           _downloadProgress.remove(key);
         });
 
+        final errorStr = e.toString().replaceAll('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.wifi_off, color: Colors.white),
+                const Icon(Icons.error_outline, color: Colors.white),
                 const SizedBox(width: 12),
-                const Expanded(
-                  child: Text('Failed to start download. Please check your internet connection.'),
+                Expanded(
+                  child: Text('Failed to start download: $errorStr'),
                 ),
               ],
             ),
@@ -439,7 +441,7 @@ class _UnitsScreenState extends State<UnitsScreen> {
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             margin: const EdgeInsets.all(16),
-            duration: const Duration(seconds: 3),
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -557,17 +559,18 @@ class _UnitsScreenState extends State<UnitsScreen> {
         );
       }
     } catch (e) {
-            if (mounted) {
+      if (mounted) {
         Navigator.pop(context); // Close loading dialog
 
+        final errorStr = e.toString().replaceAll('Exception: ', '');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.wifi_off, color: Colors.white),
+                const Icon(Icons.error_outline, color: Colors.white),
                 const SizedBox(width: 12),
-                const Expanded(
-                  child: Text('No internet connection. Please try again later.'),
+                Expanded(
+                  child: Text('Failed to open PDF: $errorStr'),
                 ),
               ],
             ),
@@ -575,7 +578,7 @@ class _UnitsScreenState extends State<UnitsScreen> {
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             margin: const EdgeInsets.all(16),
-            duration: const Duration(seconds: 3),
+            duration: const Duration(seconds: 4),
           ),
         );
       }
