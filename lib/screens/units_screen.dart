@@ -540,8 +540,8 @@ class _UnitsScreenState extends State<UnitsScreen> {
         );
       }
 
-      // 🔥 CALL CLOUD FUNCTION to get signed URL
-            String url = await PdfService.getPdfUrl(path);
+      // 🔥 Call Cloudflare Worker to get signed URL
+      String url = await PdfService.getPdfUrl(path);
       
       if (mounted) {
         Navigator.pop(context); // Close loading dialog
