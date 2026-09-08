@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pdfx/pdfx.dart';
+import 'package:flutter_pdfview/flutter_pdfview.dart';
 import '../services/screen_security_service.dart';
 import '../services/pdf_cache_service.dart';
 import '../services/history_service.dart';
@@ -54,7 +54,8 @@ class PDFViewerScreen extends StatefulWidget {
 }
 
 class _PDFViewerScreenState extends State<PDFViewerScreen> {
-  PdfControllerPinch? _pdfController;
+  PDFViewController? _pdfViewController;
+  String? _localFilePath;
   int _totalPages = 0;
   int _currentPage = 1;
   bool _isLoading = true;
@@ -62,7 +63,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
   String? _error;
   late HistoryService _historyService;
   late EncryptionService _encryptionService;
-  String? _tempDecryptedFilePath; // Store temp file path for cleanup
+  String? _tempDecryptedFilePath;
 
   @override
   void initState() {
@@ -95,7 +96,6 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
         if (mounted) {
           String errorMsg = 'Failed to decrypt file: ${e.toString()}';
 
-          // Provide helpful message if decryption key was lost
           if (e.toString().contains('app update') ||
               e.toString().contains('Key mismatch')) {
             errorMsg =
@@ -134,7 +134,6 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
       _encryptionService.deleteTempFile(_tempDecryptedFilePath!);
     }
 
-    _pdfController?.dispose();
     _downloadProgress.dispose();
     // Reset orientation to default
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
@@ -145,46 +144,50 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
   Future<void> _retryLoadPDF() async {
     String filePath = widget.filePath;
     if (widget.isNetworkPdf) {
-      // For network files, we can't retry with the stored file path
-      // Just use the widget values
       _loadPDF('');
     } else {
-      // For local files, use stored path
       _loadPDF(filePath);
     }
   }
 
   Future<void> _loadPDF(String filePath) async {
     try {
-      late Future<PdfDocument> documentFuture;
+      String localPath = filePath;
 
       if (widget.isNetworkPdf && widget.url != null) {
-        // Load PDF from network URL
         debugPrint('📄 Loading PDF from URL: ${widget.url}');
-        documentFuture = _loadNetworkPdf(widget.url!);
-      } else {
-        // Load PDF from local file using pdfx
-        debugPrint('📄 Loading PDF from file using pdfx: $filePath');
-        final file = File(filePath);
-        if (!file.existsSync()) {
+        DateTime lastUpdateTime = DateTime.now();
+        final pdfFile = await PdfCacheService.getPdf(widget.url!, onProgress: (progress) {
           if (mounted) {
-            setState(() {
-              _error = 'File not found: $filePath';
-              _isLoading = false;
-            });
+            final now = DateTime.now();
+            if (now.difference(lastUpdateTime).inMilliseconds >= 1000 || progress >= 0.99) {
+              lastUpdateTime = now;
+              _downloadProgress.value = progress;
+            }
           }
-          return;
+        });
+        localPath = pdfFile.path;
+        if (mounted) {
+          _downloadProgress.value = null;
         }
-        documentFuture = PdfDocument.openFile(filePath);
       }
 
-      _pdfController = PdfControllerPinch(document: documentFuture);
-      final document = await documentFuture;
+      final file = File(localPath);
+      if (!file.existsSync()) {
+        if (mounted) {
+          setState(() {
+            _error = 'File not found: $localPath';
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+
       if (mounted) {
         setState(() {
-          _totalPages = document.pagesCount;
+          _localFilePath = localPath;
           _isLoading = false;
-          debugPrint('✅ PDF loaded successfully. Pages: $_totalPages');
+          debugPrint('✅ PDF ready for viewing: $localPath');
         });
       }
     } catch (e) {
@@ -195,31 +198,6 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
           _isLoading = false;
         });
       }
-    }
-  }
-
-  Future<PdfDocument> _loadNetworkPdf(String url) async {
-    debugPrint('📥 Loading PDF (with cache check)...');
-    try {
-      DateTime lastUpdateTime = DateTime.now();
-      // Use PdfCacheService to get or download PDF
-      final pdfFile = await PdfCacheService.getPdf(url, onProgress: (progress) {
-        if (mounted) {
-          final now = DateTime.now();
-          if (now.difference(lastUpdateTime).inMilliseconds >= 1000 || progress >= 0.99) {
-            lastUpdateTime = now;
-            _downloadProgress.value = progress;
-          }
-        }
-      });
-      debugPrint('✅ PDF file ready: ${pdfFile.path}');
-      if (mounted) {
-        _downloadProgress.value = null; // Download finished
-      }
-      return PdfDocument.openFile(pdfFile.path);
-    } catch (e) {
-      debugPrint('❌ Error loading PDF: $e');
-      rethrow;
     }
   }
 
@@ -409,18 +387,46 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
           : Column(
               children: [
                 Expanded(
-                  child: _pdfController != null
-                      ? PdfViewPinch(
-                          controller: _pdfController!,
-                          onDocumentLoaded: (document) async {
-                            setState(() {
-                              _totalPages = document.pagesCount;
-                            });
+                  child: _localFilePath != null
+                      ? PDFView(
+                          filePath: _localFilePath!,
+                          enableSwipe: true,
+                          swipeHorizontal: false,
+                          autoSpacing: true,
+                          pageFling: true,
+                          pageSnap: true,
+                          defaultPage: 0,
+                          fitPolicy: FitPolicy.BOTH,
+                          preventLinkNavigation: false,
+                          onRender: (pages) {
+                            if (mounted) {
+                              setState(() {
+                                _totalPages = pages ?? 0;
+                              });
+                            }
                           },
-                          onPageChanged: (page) {
-                            setState(() {
-                              _currentPage = page;
-                            });
+                          onError: (error) {
+                            if (mounted) {
+                              setState(() {
+                                _error = error.toString();
+                              });
+                            }
+                          },
+                          onPageError: (page, error) {
+                            debugPrint('Page error $page: ${error.toString()}');
+                          },
+                          onViewCreated: (PDFViewController controller) {
+                            _pdfViewController = controller;
+                          },
+                          onPageChanged: (page, total) {
+                            if (mounted) {
+                              setState(() {
+                                _currentPage = (page ?? 0) + 1;
+                                if (total != null && total > 0) {
+                                  _totalPages = total;
+                                }
+                              });
+                            }
                           },
                         )
                       : const Center(child: Text('Failed to load PDF')),
@@ -437,12 +443,9 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.chevron_left),
-                        onPressed: _currentPage > 1 && _pdfController != null
+                        onPressed: _currentPage > 1 && _pdfViewController != null
                             ? () {
-                                _pdfController!.previousPage(
-                                  curve: Curves.ease,
-                                  duration: const Duration(milliseconds: 300),
-                                );
+                                _pdfViewController!.setPage(_currentPage - 2);
                               }
                             : null,
                       ),
@@ -455,13 +458,9 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
                       ),
                       IconButton(
                         icon: const Icon(Icons.chevron_right),
-                        onPressed:
-                            _currentPage < _totalPages && _pdfController != null
+                        onPressed: _currentPage < _totalPages && _pdfViewController != null
                             ? () {
-                                _pdfController!.nextPage(
-                                  curve: Curves.ease,
-                                  duration: const Duration(milliseconds: 300),
-                                );
+                                _pdfViewController!.setPage(_currentPage);
                               }
                             : null,
                       ),

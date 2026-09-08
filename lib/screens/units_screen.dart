@@ -5,9 +5,7 @@ import '../services/pdf_service.dart';
 import '../services/download_manager.dart';
 import '../services/downloads_service.dart';
 import '../services/history_service.dart';
-import '../services/file_type_service.dart';
 import '../widgets/app_scaffold.dart';
-import 'document_viewer_screen.dart';
 import 'pdf_viewer_screen.dart';
 
 class UnitsScreen extends StatefulWidget {
