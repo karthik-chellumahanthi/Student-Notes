@@ -1,3 +1,6 @@
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
 // JWKS Caching for Google Public Keys
 let cachedJwks = null;
 let jwksCacheTime = 0;
@@ -71,97 +74,6 @@ async function verifyFirebaseToken(idToken, projectId = "jntuk-notes") {
   return payload;
 }
 
-async function hmacSha256(key, message) {
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    typeof key === "string" ? new TextEncoder().encode(key) : key,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const signature = await crypto.subtle.sign("HMAC", cryptoKey, typeof message === "string" ? new TextEncoder().encode(message) : message);
-  return new Uint8Array(signature);
-}
-
-async function sha256Hex(message) {
-  const msgUint8 = new TextEncoder().encode(message);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", msgUint8);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => (b < 16 ? '0' : '') + b.toString(16)).join("");
-}
-
-function bytesToHex(bytes) {
-  return Array.from(bytes).map(b => (b < 16 ? '0' : '') + b.toString(16)).join("");
-}
-
-async function generateR2PresignedUrl({ accessKeyId, secretAccessKey, endpoint, bucket, key, expiresInSeconds = 1800 }) {
-  let cleanKey = key.replace(/\\/g, '/');
-  while (cleanKey.startsWith('/')) cleanKey = cleanKey.substring(1);
-
-  if (cleanKey.includes('..') || cleanKey.includes('\0')) {
-    throw new Error("Invalid file path: Path traversal detected");
-  }
-  if (!cleanKey) {
-    throw new Error("Invalid file path: Key cannot be empty");
-  }
-
-  const now = new Date();
-  const amzDate = now.toISOString().replace(/[:-]/g, "").split(".")[0] + "Z";
-  const datestamp = amzDate.substring(0, 8);
-
-  const region = "auto";
-  const service = "s3";
-  const credentialScope = `${datestamp}/${region}/${service}/aws4_request`;
-
-  const host = new URL(endpoint).host;
-  const canonicalUri = `/${bucket}/${cleanKey.split('/').map(encodeURIComponent).join('/')}`;
-
-  const queryParams = {
-    "X-Amz-Algorithm": "AWS4-HMAC-SHA256",
-    "X-Amz-Credential": `${accessKeyId}/${credentialScope}`,
-    "X-Amz-Date": amzDate,
-    "X-Amz-Expires": expiresInSeconds.toString(),
-    "X-Amz-SignedHeaders": "host",
-  };
-
-  const sortedKeys = Object.keys(queryParams).sort();
-  const canonicalQueryString = sortedKeys
-    .map(k => `${encodeURIComponent(k)}=${encodeURIComponent(queryParams[k])}`)
-    .join("&");
-
-  const canonicalHeaders = `host:${host}\n`;
-  const signedHeaders = "host";
-  const payloadHash = "UNSIGNED-PAYLOAD";
-
-  const canonicalRequest = [
-    "GET",
-    canonicalUri,
-    canonicalQueryString,
-    canonicalHeaders,
-    signedHeaders,
-    payloadHash,
-  ].join("\n");
-
-  const canonicalRequestHash = await sha256Hex(canonicalRequest);
-
-  const stringToSign = [
-    "AWS4-HMAC-SHA256",
-    amzDate,
-    credentialScope,
-    canonicalRequestHash,
-  ].join("\n");
-
-  const kDate = await hmacSha256(`AWS4${secretAccessKey}`, datestamp);
-  const kRegion = await hmacSha256(kDate, region);
-  const kService = await hmacSha256(kRegion, service);
-  const kSigning = await hmacSha256(kService, "aws4_request");
-
-  const signatureBytes = await hmacSha256(kSigning, stringToSign);
-  const signatureHex = bytesToHex(signatureBytes);
-
-  return `${endpoint}${canonicalUri}?${canonicalQueryString}&X-Amz-Signature=${signatureHex}`;
-}
-
 export default {
   async fetch(request, env) {
     const corsHeaders = {
@@ -209,6 +121,16 @@ export default {
           });
         }
 
+        // Path traversal validation
+        let cleanKey = filePath.replace(/\\/g, '/');
+        while (cleanKey.startsWith('/')) cleanKey = cleanKey.substring(1);
+        if (cleanKey.includes('..') || cleanKey.includes('\0')) {
+          return new Response(JSON.stringify({ error: "Invalid file path: Path traversal detected" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
+
         const accessKeyId = env.R2_ACCESS_KEY_ID;
         const secretAccessKey = env.R2_SECRET_ACCESS_KEY;
         const endpoint = env.R2_ENDPOINT || "https://1d069ed680ea3cf655e9b39b485541e4.r2.cloudflarestorage.com";
@@ -221,14 +143,21 @@ export default {
           });
         }
 
-        const signedUrl = await generateR2PresignedUrl({
-          accessKeyId,
-          secretAccessKey,
-          endpoint,
-          bucket,
-          key: filePath,
-          expiresInSeconds: 1800, // 30 minutes
+        const s3 = new S3Client({
+          region: "auto",
+          endpoint: endpoint,
+          credentials: {
+            accessKeyId,
+            secretAccessKey,
+          },
         });
+
+        const command = new GetObjectCommand({
+          Bucket: bucket,
+          Key: cleanKey,
+        });
+
+        const signedUrl = await getSignedUrl(s3, command, { expiresIn: 1800 });
 
         return new Response(JSON.stringify({ url: signedUrl }), {
           headers: { "Content-Type": "application/json", ...corsHeaders }

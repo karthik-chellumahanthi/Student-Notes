@@ -179,9 +179,11 @@ class _UnitsScreenState extends State<UnitsScreen> {
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
                     var doc = docs[index];
-                    String unitTitle =
-                        doc['title'] as String? ?? 'Unit ${index + 1}';
-                    String unitPath = doc['path'] as String? ?? '';
+                    final data = doc.data() as Map<String, dynamic>?;
+                    String unitTitle = data?['title'] as String? ??
+                        data?['name'] as String? ??
+                        'Unit ${index + 1}';
+                    String unitPath = data?['path'] as String? ?? '';
 
                     return Container(
                       margin: const EdgeInsets.symmetric(vertical: 8),
