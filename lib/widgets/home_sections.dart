@@ -1,8 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../data/academic_data.dart';
 import '../semester.dart';
 import '../providers/home_provider.dart';
+
+class _BranchInfo {
+  final String name;
+  final String prefix;
+
+  _BranchInfo({required this.name, required this.prefix});
+}
+
+String _getBranchDisplayName(String prefix, String? firestoreName) {
+  final p = prefix.toLowerCase();
+
+  const Map<String, String> knownPrefixes = {
+    'aid': 'AIDS',
+    'cai': 'CAI',
+    'csd': 'CSD',
+    'csm': 'CSM',
+    'csc': 'CSC',
+    'eee': 'EEE',
+    'mech': 'MECH',
+    'civil': 'CIVIL',
+    'ece': 'ECE',
+    'cse': 'CSE',
+    'it': 'IT',
+  };
+
+  if (knownPrefixes.containsKey(p)) {
+    return knownPrefixes[p]!;
+  }
+
+  if (firestoreName != null && firestoreName.trim().isNotEmpty) {
+    return firestoreName.trim();
+  }
+
+  return p.toUpperCase();
+}
 
 class HomeWelcomeSection extends StatelessWidget {
   const HomeWelcomeSection({super.key});
@@ -160,10 +196,6 @@ class HomeNotesSection extends StatelessWidget {
     final provider = context.watch<HomeProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final selectedReg = provider.selectedNotesRegulation;
-    
-    final filteredBranches = selectedReg != null 
-        ? (AcademicData.regulationBranches[selectedReg] ?? []) 
-        : <String>[];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -343,79 +375,132 @@ class HomeNotesSection extends StatelessWidget {
                   style: TextStyle(fontSize: 13, color: isDark ? Colors.grey[400] : Colors.grey[600]),
                 ),
                 const SizedBox(height: 14),
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: filteredBranches.length,
-                  gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
-                        childAspectRatio: 2.5,
-                      ),
-                  itemBuilder: (context, index) {
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF064E3B).withOpacity(0.6) : const Color(0xFFD1FAE5),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                          color: isDark ? const Color(0xFF059669) : const Color(0xFF6EE7B7),
-                          width: 1.5,
+
+                /// Dynamic Branches from Firestore
+                FutureBuilder<QuerySnapshot>(
+                  future: FirebaseFirestore.instance
+                      .collection('branches')
+                      .get(const GetOptions(source: Source.serverAndCache)),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: CircularProgressIndicator(),
                         ),
-                      ),
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          foregroundColor: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF065F46),
-                          elevation: 0,
-                          shadowColor: Colors.transparent,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => SemesterScreen(
-                                branch: filteredBranches[index],
-                                branchPrefix: AcademicData.getBranchIdPrefix(
-                                  filteredBranches[index],
-                                ),
-                                regulation: selectedReg,
-                              ),
-                            ),
-                          ).then((returnedIndex) {
-                            if (returnedIndex != null &&
-                                returnedIndex is int) {
-                              context.read<HomeProvider>().setTabIndex(returnedIndex);
-                            }
-                          });
-                        },
+                      );
+                    }
+
+                    if (snapshot.hasError || !snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      return Center(
                         child: Text(
-                          filteredBranches[index],
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 15,
+                          "No branches found",
+                          style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                        ),
+                      );
+                    }
+
+                    final Map<String, _BranchInfo> branchMap = {};
+
+                    for (var doc in snapshot.data!.docs) {
+                      final docId = doc.id;
+                      if (!docId.contains('_')) continue;
+
+                      final prefix = docId.split('_')[0].toLowerCase();
+                      if (!branchMap.containsKey(prefix)) {
+                        final data = doc.data() as Map<String, dynamic>?;
+                        final String? firestoreName = data?['name'] as String?;
+                        final String name = _getBranchDisplayName(prefix, firestoreName);
+                        branchMap[prefix] = _BranchInfo(name: name, prefix: prefix);
+                      }
+                    }
+
+                    final branches = branchMap.values.toList();
+                    branches.sort((a, b) => a.name.compareTo(b.name));
+
+                    if (branches.isEmpty) {
+                      return Center(
+                        child: Text(
+                          "No branches found",
+                          style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                        ),
+                      );
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        GridView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: branches.length,
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            childAspectRatio: 2.5,
+                          ),
+                          itemBuilder: (context, index) {
+                            final branch = branches[index];
+                            return Container(
+                              decoration: BoxDecoration(
+                                color: isDark ? const Color(0xFF064E3B).withOpacity(0.6) : const Color(0xFFD1FAE5),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: isDark ? const Color(0xFF059669) : const Color(0xFF6EE7B7),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  foregroundColor: isDark ? const Color(0xFF6EE7B7) : const Color(0xFF065F46),
+                                  elevation: 0,
+                                  shadowColor: Colors.transparent,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => SemesterScreen(
+                                        branch: branch.name,
+                                        branchPrefix: branch.prefix,
+                                        regulation: selectedReg,
+                                      ),
+                                    ),
+                                  ).then((returnedIndex) {
+                                    if (returnedIndex != null && returnedIndex is int) {
+                                      context.read<HomeProvider>().setTabIndex(returnedIndex);
+                                    }
+                                  });
+                                },
+                                child: Text(
+                                  branch.name,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          "📌 We are adding more branches very soon",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? Colors.grey[500] : Colors.grey[600],
+                            fontStyle: FontStyle.italic,
                           ),
                         ),
-                      ),
+                      ],
                     );
                   },
                 ),
-
-                const SizedBox(height: 12),
-
-                if (filteredBranches.isNotEmpty)
-                  Text(
-                    "📌 We are adding more branches very soon",
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? Colors.grey[500] : Colors.grey[600],
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
               ],
             ),
           ),
