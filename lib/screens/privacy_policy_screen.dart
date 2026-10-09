@@ -22,9 +22,9 @@ class PrivacyPolicyScreen extends StatelessWidget {
                   ),
             ),
             const SizedBox(height: 16),
-            Text(
-              'Last updated: ${DateTime.now().toLocal().toString().split(' ')[0]}',
-              style: const TextStyle(
+            const Text(
+              'Last updated: October 9, 2026',
+              style: TextStyle(
                 color: Colors.grey,
                 fontStyle: FontStyle.italic,
               ),
@@ -58,7 +58,7 @@ class PrivacyPolicyScreen extends StatelessWidget {
             _buildSection(
               context,
               '6. Contact Us',
-              'If you have any questions or suggestions about our Privacy Policy, do not hesitate to contact us.',
+              'If you have any questions or suggestions about our Privacy Policy, do not hesitate to contact us at: karthikch834@gmail.com',
             ),
           ],
         ),
