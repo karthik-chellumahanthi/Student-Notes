@@ -22,9 +22,9 @@ class TermsConditionsScreen extends StatelessWidget {
                   ),
             ),
             const SizedBox(height: 16),
-            Text(
-              'Last updated: ${DateTime.now().toLocal().toString().split(' ')[0]}',
-              style: const TextStyle(
+            const Text(
+              'Last updated: October 9, 2026',
+              style: TextStyle(
                 color: Colors.grey,
                 fontStyle: FontStyle.italic,
               ),

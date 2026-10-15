@@ -26,14 +26,21 @@ class DownloadCard extends StatelessWidget {
       displayName = displayName.substring(0, displayName.length - 4);
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? Colors.grey[850]! : const Color(0xFFF5F5F5);
+    final borderColor = isDark ? Colors.grey[700]! : Colors.grey[300]!;
+    final titleColor = isDark ? Colors.white : Colors.black87;
+    final subtitleColor = isDark ? Colors.grey[400]! : Colors.grey[600]!;
+    final iconBgColor = isDark ? Colors.red[900]! : Colors.red[50]!;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
+        color: cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Colors.grey[300]!,
+          color: borderColor,
           width: 1,
         ),
       ),
@@ -45,7 +52,7 @@ class DownloadCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.red[50],
+                  color: iconBgColor,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
@@ -61,10 +68,10 @@ class DownloadCard extends StatelessWidget {
                   children: [
                     Text(
                       displayName,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
-                        color: Colors.black87,
+                        color: titleColor,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -75,7 +82,7 @@ class DownloadCard extends StatelessWidget {
                         download.subject,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[600],
+                          color: subtitleColor,
                         ),
                       ),
                   ],
@@ -90,7 +97,7 @@ class DownloadCard extends StatelessWidget {
                 "Size: ${DownloadsService.formatFileSize(download.fileSize)}",
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey[600],
+                  color: subtitleColor,
                 ),
               ),
               const Spacer(),
@@ -98,7 +105,7 @@ class DownloadCard extends StatelessWidget {
                 formattedDate,
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.grey[600],
+                  color: subtitleColor,
                 ),
               ),
             ],
